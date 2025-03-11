@@ -109,8 +109,7 @@ jobs:
           fi
           export LDFLAGS="-L/opt/homebrew/lib"
           export CPPFLAGS="-I/opt/homebrew/include"
-          autoreconf -i
-          automake --add-missing
+          autoreconf -ivf
           ./configure \
             --enable-static \
             --disable-shared \
@@ -126,7 +125,9 @@ jobs:
             --enable-bittorrent \
             --enable-websocket \
             --disable-nls \
+            --without-libintl-prefix \
             ARIA2_STATIC=yes
+          sed -i '' 's/ po / /' Makefile
           make -j$(sysctl -n hw.ncpu)
 
       - name: Test aria2
