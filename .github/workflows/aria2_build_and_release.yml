@@ -4,6 +4,9 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "0 0 * * 6"
+  release:
+    types:
+      - released
 
 jobs:
   build-on-ubuntu:
@@ -107,6 +110,7 @@ jobs:
           export LDFLAGS="-L/opt/homebrew/lib"
           export CPPFLAGS="-I/opt/homebrew/include"
           autoreconf -i
+          automake --add-missing
           ./configure \
             --enable-static \
             --disable-shared \
@@ -215,7 +219,7 @@ jobs:
           ls -laR .
 
       - name: Prepare and Create Prerelease
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'  # 修改条件判断
         run: |
           NOW=$(date --utc)
           echo "NOW=$NOW"
@@ -229,7 +233,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Prerelease assets
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'  # 修改条件判断
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -244,7 +248,7 @@ jobs:
             release/*.zip
 
       - name: Delete existing release and tag if they exist
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'release'
         run: |
           ARIA2_VER=$(curl -s https://api.github.com/repos/aria2/aria2/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")' | sed 's/release-//')
           echo "ARIA2 version: $ARIA2_VER"
@@ -261,7 +265,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release and Upload Assets
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
