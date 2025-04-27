@@ -227,16 +227,12 @@ jobs:
 
           # 删除已存在的continuous release和tag
           gh release delete continuous --cleanup-tag || true
-          git tag -d continuous || true
-          git push origin :refs/tags/continuous || true
-
-          # 等待几秒确保删除操作完成
-          sleep 5
 
           # 创建新的continuous release
-          gh release create continuous -p -t 'Continuous build' --notes "Building time: $NOW
+          gh release create continuous -p -t 'Continuous build' --notes "Building time: ${NOW}
           - - -
           "
+          # Make sure draft is false
           gh release edit continuous --draft=false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -244,17 +240,17 @@ jobs:
       - name: Prerelease assets
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'  # 修改条件判断
         uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          files: |
+            release/*.zip
+          prerelease: true
+          draft: false
           tag_name: continuous
           name: Continuous build
           body_path: release/build_info.md
-          draft: false
-          prerelease: true
           append_body: true
-          files: |
-            release/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Delete existing release and tag if they exist
         if: github.event_name == 'release'
