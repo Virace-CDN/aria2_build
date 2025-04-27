@@ -225,7 +225,15 @@ jobs:
           NOW=$(date --utc)
           echo "NOW=$NOW"
 
+          # 删除已存在的continuous release和tag
           gh release delete continuous --cleanup-tag || true
+          git tag -d continuous || true
+          git push origin :refs/tags/continuous || true
+
+          # 等待几秒确保删除操作完成
+          sleep 5
+
+          # 创建新的continuous release
           gh release create continuous -p -t 'Continuous build' --notes "Building time: $NOW
           - - -
           "
