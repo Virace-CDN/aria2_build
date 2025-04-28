@@ -184,7 +184,8 @@ jobs:
           path: |
             release/
 
-  Release:
+  Prerelease:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: [build-on-ubuntu, build-on-macos]
     runs-on: ubuntu-latest
 
@@ -220,7 +221,6 @@ jobs:
           ls -laR .
 
       - name: Prepare and Create Prerelease
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'  # 修改条件判断
         run: |
           NOW=$(date --utc)
           echo "NOW=$NOW"
@@ -237,8 +237,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Prerelease assets
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'  # 修改条件判断
+      - name: Upload Prerelease Assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -252,8 +251,43 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  Release:
+    if: github.event_name == 'release'
+    needs: [build-on-ubuntu, build-on-macos]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release
+          pattern: aria2-*
+          merge-multiple: true
+
+      - name: Merge and clean .md files
+        run: |
+          cd release
+          echo "List of downloaded files:"
+          ls -laR .
+
+          touch build_info.txt
+          find . -maxdepth 1 -type f -name "*.md" -print0 | xargs -0 ls -t | while read -r file; do
+            if [[ -f "$file" ]]; then
+              echo "Appending content of $file to build_info.txt"
+              cat "$file" >> build_info.txt
+              echo "" >> build_info.txt
+            fi
+          done
+          rm *.md
+          mv build_info.txt build_info.md
+
+          echo "Final list of files in release directory:"
+          ls -laR .
+
       - name: Delete existing release and tag if they exist
-        if: github.event_name == 'release'
         run: |
           ARIA2_VER=$(curl -s https://api.github.com/repos/aria2/aria2/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")' | sed 's/release-//')
           echo "ARIA2 version: $ARIA2_VER"
@@ -270,7 +304,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release and Upload Assets
-        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
