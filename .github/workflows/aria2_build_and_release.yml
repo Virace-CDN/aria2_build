@@ -3,7 +3,7 @@ name: "ARIA2 Build and Release"
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 0 * * 6"
+    - cron: "0 0 * * 6"  # 每周六 UTC 时间 00:00 运行
   release:
     types:
       - released
@@ -22,16 +22,17 @@ jobs:
           - i686-unknown-linux-musl
           - x86_64-w64-mingw32
           - i686-w64-mingw32
-        ARIA2_VER: [""] # 默认值为 master，可为特定版本（如 1.36.0）
-        USE_CHINA_MIRROR: [0] # 默认值为 0，设置为 1 使用中国镜像
-        USE_ZLIB_NG: [1] # 默认值为 1，表示使用 zlib-ng 而不是 zlib
-        USE_LIBRESSL: [0] # 默认值为 0，表示使用 OpenSSL，可以设置为 1 以使用 LibreSSL
+        ARIA2_VER: [""]        # 默认值为 master，可为特定版本（如 1.36.0）
+        USE_CHINA_MIRROR: [0]   # 默认值为 0，设置为 1 使用中国镜像
+        USE_ZLIB_NG: [1]        # 默认值为 1，表示使用 zlib-ng 而不是 zlib
+        USE_LIBRESSL: [0]       # 默认值为 0，表示使用 OpenSSL，可以设置为 1 以使用 LibreSSL
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - uses: actions/cache@v4
+      - name: Cache downloads
+        uses: actions/cache@v4
         id: cache
         with:
           path: downloads/
@@ -90,7 +91,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
@@ -136,9 +137,9 @@ jobs:
           ./src/aria2c --version
           make check
 
-          echo "验证二进制文件的架构:"
+          echo "验证二进制文件的架构："
           file ./src/aria2c
-          echo "验证是否为静态链接:"
+          echo "验证是否为静态链接："
           otool -L ./src/aria2c
 
       - name: Package aria2 binary
@@ -157,7 +158,7 @@ jobs:
           echo "Building using these dependencies:" >>"${BUILD_INFO}"
           echo '```bash' >>"${BUILD_INFO}"
           echo "brew install libssh2 zlib sqlite3 c-ares libxml2 nettle gmp" >>"${BUILD_INFO}"
-          echo '```' >>"${BUILD_INFO}"          
+          echo '```' >>"\${BUILD_INFO}"
           echo "- libssh2: $(pkg-config --modversion libssh2)" >> "$BUILD_INFO"
           echo "- zlib: $(pkg-config --modversion zlib)" >> "$BUILD_INFO"
           echo "- sqlite3: $(pkg-config --modversion sqlite3)" >> "$BUILD_INFO"
@@ -184,7 +185,7 @@ jobs:
           path: |
             release/
 
-  Prerelease:
+  prerelease:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: [build-on-ubuntu, build-on-macos]
     runs-on: ubuntu-latest
@@ -207,6 +208,12 @@ jobs:
           ls -laR .
 
           touch build_info.txt
+          NOW=$(date --utc)
+          echo "NOW=$NOW"
+          cat <<EOF > build_info.txt
+          Building time: ${NOW}
+          - - -
+          EOF
           find . -maxdepth 1 -type f -name "*.md" -print0 | xargs -0 ls -t | while read -r file; do
             if [[ -f "$file" ]]; then
               echo "Appending content of $file to build_info.txt"
@@ -222,18 +229,8 @@ jobs:
 
       - name: Prepare and Create Prerelease
         run: |
-          NOW=$(date --utc)
-          echo "NOW=$NOW"
-
-          # 删除已存在的continuous release和tag
+          # 删除已存在的 continuous release 和 tag
           gh release delete continuous --cleanup-tag || true
-
-          # 创建新的continuous release
-          gh release create continuous -p -t 'Continuous build' --notes "Building time: ${NOW}
-          - - -
-          "
-          # Make sure draft is false
-          gh release edit continuous --draft=false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -251,7 +248,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  Release:
+  release:
     if: github.event_name == 'release'
     needs: [build-on-ubuntu, build-on-macos]
     runs-on: ubuntu-latest
