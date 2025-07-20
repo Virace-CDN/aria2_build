@@ -11,10 +11,6 @@ jobs:
       fail-fast: false
       matrix:
         CROSS_HOST:
-          - arm-unknown-linux-musleabi
-          - aarch64-unknown-linux-musl
-          - x86_64-unknown-linux-musl
-          - i686-unknown-linux-musl
           - x86_64-w64-mingw32
           - i686-w64-mingw32
         ARIA2_VER: [""]        # 默认值为 master，可为特定版本（如 1.36.0）
