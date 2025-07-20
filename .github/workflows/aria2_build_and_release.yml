@@ -2,11 +2,6 @@ name: "ARIA2 Build and Release"
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 0 * * 6"  # 每周六 UTC 时间 00:00 运行
-  release:
-    types:
-      - released
 
 jobs:
   build-on-ubuntu:
